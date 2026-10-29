@@ -108,3 +108,17 @@ const firstName = ref('')
 const lastName = ref('')
 const phoneNumber = ref('')
 const hoverId = ref(null)
+
+async function loadData() {
+  searchBy.value = ''
+  firstName.value = ''
+  lastName.value = ''
+  phoneNumber.value = ''
+
+  try {
+    const response = await getClients()
+    clients.value = response
+  } catch (error) {
+    toast.error(error)
+  }
+}
