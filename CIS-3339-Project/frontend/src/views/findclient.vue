@@ -122,3 +122,40 @@ async function loadData() {
     toast.error(error)
   }
 }
+async function handleSubmitForm() {
+  if (searchBy.value === 'Client Name') {
+    if (firstName.value || lastName.value) {
+      try {
+        const query = {
+          searchBy: 'name',
+          firstName: firstName.value,
+          lastName: lastName.value,
+        }
+
+        const response = await searchClients(query)
+        clients.value = response
+      } catch (error) {
+        toast.error(error)
+      }
+    }
+  } else if (searchBy.value === 'Client Number') {
+    if (phoneNumber.value) {
+      try {
+        const query = {
+          searchBy: 'number',
+          phoneNumber: phoneNumber.value,
+        }
+
+        const response = await searchClients(query)
+        clients.value = response
+      } catch (error) {
+        toast.error(error)
+      }
+    }
+  }
+}
+
+onMounted(() => {
+  loadData()
+})
+</script>
