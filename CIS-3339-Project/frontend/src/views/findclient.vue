@@ -97,7 +97,7 @@
 
 <script setup>
 import {ref, onMounted} from 'vue'
-import {getclients, searchClients} from '../api/api'
+import {getClients, searchClients} from '../api/api'
 import {useToast} from 'vue-toastification'
 
 const toast = useToast()
