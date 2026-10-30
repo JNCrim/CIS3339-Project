@@ -4,45 +4,87 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { Chart, registerables } from 'chart.js'
+
+// Register the Chart.js components needed to render
+// the doughnut chart, as in the original Options API.
 Chart.register(...registerables)
-//define props (label and chartData)
-export default {
-  props: {
-    label: {
-      type: Array
+
+// Composition API: defineProps() replaces the Options API
+// props declaration. The names remain unchanged so
+// home.vue can continue passing data to this component.
+const props = defineProps({
+  label: {
+    type: Array
+  },
+  chartData: {
+    type: Array
+  }
+})
+
+// Composition API: ref() replaces this.$refs.zipChart.
+// The canvas element becomes available after mounting.
+const zipChart = ref(null)
+
+// Keep a reference to the Chart.js instance so we can
+// update it and clean it up when the component unmounts.
+let chartInstance = null
+
+// Composition API: onMounted() replaces mounted().
+// Create the doughnut chart once the canvas is available.
+onMounted(() => {
+  chartInstance = new Chart(zipChart.value, {
+    type: 'doughnut',
+    data: {
+      labels: props.label || [],
+      datasets: [
+        {
+          borderWidth: 1,
+          data: props.chartData || []
+        }
+      ]
     },
-    chartData: {
-      type: Array
-    }
-  },
-  async mounted() { //uses the data to load the chart's values
-    await new Chart(this.$refs.zipChart, {
-      type: 'doughnut',
-      data: {
-        labels: this.label,
-        datasets: [
-          {
-            borderWidth: 1,
-            data: this.chartData // Update this line
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          legend: {
-            display: false
-          },
-          title: {
-            display: true,
-            text: 'Clients by Zip Code'
-          }
+    options: {
+      plugins: {
+        legend: {
+          display: false
         },
-        responsive: true,
-        maintainAspectRatio: true
-      }
-    })
+        title: {
+          display: true,
+          text: 'Clients by Zip Code'
+        }
+      },
+      responsive: true,
+      maintainAspectRatio: true
+    }
+  })
+})
+
+// Watch for changes to the ZIP code data received
+// from home.vue. Update the existing chart when
+// the API request finishes or the data changes.
+watch(
+  () => [props.label, props.chartData],
+  () => {
+    if (!chartInstance) return
+
+    chartInstance.data.labels = props.label || []
+    chartInstance.data.datasets[0].data = props.chartData || []
+    chartInstance.update()
   },
-}
+  { deep: true }
+)
+
+// Composition API: onUnmounted() replaces the need
+// for manual chart cleanup in the Options API.
+// Destroy the chart when navigating away.
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.destroy()
+    chartInstance = null
+  }
+})
 </script>
+
