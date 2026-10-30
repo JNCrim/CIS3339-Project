@@ -175,86 +175,91 @@
   </main>
 </template>
 
-<script>
-//import functionalities for validation
+
+<script setup>
+import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import useVuelidate from '@vuelidate/core'
-import { required, email, numeric, minLength, maxLength } from '@vuelidate/validators'
+import {
+  required,
+  email,
+  numeric,
+  minLength,
+  maxLength
+} from '@vuelidate/validators'
 import { createClient } from '../api/api'
 import { useToast } from 'vue-toastification'
 
-//Notifications
+// Initialize the router and toast notifications
+// inside the Composition API setup context.
+const router = useRouter()
 const toast = useToast()
 
-export default {
-  data() {
-    return {
-      //client variable to hold new client information
-      client: {
-        firstName: null,
-        middleName: null,
-        lastName: null,
-        email: null,
-        phoneNumber: {
-          primary: null,
-          alternate: null
-        },
-        address: {
-          line1: null,
-          line2: null,
-          city: null,
-          county: null,
-          zip: null
-        },
-      }
-    }
+// Composition API: reactive() replaces the Options API
+// data() function while preserving nested client fields.
+const client = reactive({
+  firstName: null,
+  middleName: null,
+  lastName: null,
+  email: null,
+  phoneNumber: {
+    primary: null,
+    alternate: null
   },
-  setup() {
-    // Register Vuelidate
-    const v$ = useVuelidate();
-    return { v$ };
-  },
-  validations() {
-    // validations for client
-    return {
-      client: {
-        firstName: { required },
-        lastName: { required },
-        email: { required, email },
-        phoneNumber: {
-          primary: {
-            required,
-            numeric,
-            minLength: minLength(10),
-            maxLength: maxLength(10),
-          },
-        },
-        address: {
-          city: { required },
-        },
-      },
-    };
-  },
-  methods: {
-    // method called when user submits the form
-    async submitForm() {
-      // Trigger validation
-      this.v$.$validate();
+  address: {
+    line1: null,
+    line2: null,
+    city: null,
+    county: null,
+    zip: null
+  }
+})
 
-      if (this.v$.$error) {
-        // Form is invalid, do not proceed
-        return;
-      }
-
-      try {
-        const response = await createClient(this.client);
-        this.$router.push('/findclient')
-        toast.success(response)
-      } catch (error) {
-        toast.error(error)
+// Vuelidate rules replace the Options API validations()
+// function, preserving all original validation requirements.
+const rules = {
+  client: {
+    firstName: { required },
+    lastName: { required },
+    email: { required, email },
+    phoneNumber: {
+      primary: {
+        required,
+        numeric,
+        minLength: minLength(10),
+        maxLength: maxLength(10)
       }
     },
+    address: {
+      city: { required }
+    }
+  }
+}
+
+// Connect Vuelidate to the reactive client object.
+// v$ is automatically exposed to the existing template.
+const v$ = useVuelidate(rules, { client })
+
+// Composition API: a regular async function replaces
+// the Options API methods.submitForm() method.
+async function submitForm() {
+  // Validate all fields before submitting the client.
+  const isValid = await v$.value.$validate()
+
+  if (!isValid) {
+    // Prevent submission when validation fails.
+    return
+  }
+
+  try {
+    const response = await createClient(client)
+
+    // useRouter() replaces this.$router navigation.
+    router.push('/findclient')
+
+    toast.success(response)
+  } catch (error) {
+    toast.error(error?.response?.data?.message || error?.message || 'Error creating client')
   }
 }
 </script>
-
-

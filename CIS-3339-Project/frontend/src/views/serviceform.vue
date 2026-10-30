@@ -76,59 +76,58 @@
     </main>
 </template>
 
-<script>
-// import vuelidate validations
+<script setup>
+import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import useVuelidate from '@vuelidate/core'
 import { required } from '@vuelidate/validators'
 import { createService } from '../api/api'
 import { useToast } from 'vue-toastification'
 
-//Notifications
+// Initialize Vue Router and notifications inside setup.
+const router = useRouter()
 const toast = useToast()
 
-export default {
-    data() {
-        return {
-            //variable to hold new service information
-            service: {
-                name: null,
-                description: null,
-                status: "Active",
-            },
-        }
-    },
-    setup() {
-        // Register Vuelidate
-        const v$ = useVuelidate();
-        return { v$ };
-    },
-    validations() {
-        // validations for service
-        return {
-            service: {
-                name: { required },
-            }
-        }
-    },
-    methods: {
-        // method called when user attempts to create new service
-        async handleSubmitForm() {
-            // Trigger validation
-            this.v$.$validate();
+// Composition API: reactive() replaces the Options API data()
+// function and stores the new service's information.
+const service = reactive({
+  name: null,
+  description: null,
+  status: 'Active'
+})
 
-            if (this.v$.$error) {
-                // Form is invalid, do not proceed
-                return;
-            }
+// Vuelidate rules replace the Options API validations() function.
+// The service name is required before submission.
+const rules = {
+  service: {
+    name: { required }
+  }
+}
 
-            try {
-                const response = await createService(this.service);
-                toast.success(response)
-                this.$router.push('/findservice')
-            } catch (error) {
-                toast.error('Error creating new service:', error)
-            }
-        },
-    }
+// Register Vuelidate with the reactive form state.
+// The v$ object remains available to the existing template.
+const v$ = useVuelidate(rules, { service })
+
+// Replaces the Options API handleSubmitForm() method.
+// Validates the form, creates the service, and redirects on success.
+async function handleSubmitForm() {
+  const isValid = await v$.value.$validate()
+
+  if (!isValid) {
+    // Stop submission when required fields are invalid.
+    return
+  }
+
+  try {
+    const response = await createService(service)
+
+    toast.success(response)
+
+    // useRouter() replaces this.$router from the Options API.
+    router.push('/findservice')
+  } catch (error) {
+    toast.error('Error creating new service')
+    console.error(error)
+  }
 }
 </script>
