@@ -89,48 +89,36 @@
   </main>
 </template>
 
-<script>
+
+<script setup>
+import { ref, onMounted } from 'vue'
 import { useLoggedInUserStore } from './store/loggedInUser'
 import { getOrgName } from './api/api'
 import { useToast } from 'vue-toastification'
 
-//Notifications
+// Initialize the Pinia authentication store.
+// In <script setup>, the user variable is automatically
+// available to the existing navigation template.
+const user = useLoggedInUserStore()
+
+// Initialize toast notifications inside the setup context.
 const toast = useToast()
 
-export default {
-  setup() {
-    const user = useLoggedInUserStore();
-    return { user };
-  },
-  data() {
-    return {
-      orgName: "Dataplatform",
-    };
-  },
-  async created() {
-    try {
-      this.orgName = await getOrgName();
-    } catch {
-      throw (error)
-    }
-  },
-  methods: {
-    logout() {
-      try {
-        this.$store.dispatch('clearSessionData');
-        this.$router.push('/')
-      } catch (error) {
-        toast.error('logout error', error)
-      }
-    },
-  }
-}
-</script>
+// Composition API: ref() replaces the Options API data()
+// property used to display the organization name.
+const orgName = ref('Dataplatform')
 
-<style scoped>
-#_container {
-  background-color: #c8102e;
-  color: white;
-  padding: 18px;
-}
-</style>
+// Composition API: onMounted() replaces the initialization
+// previously performed in the Options API created() hook.
+onMounted(async () => {
+  try {
+    // Retrieve the organization's name from the backend.
+    orgName.value = await getOrgName()
+  } catch (error) {
+    // Fix the original catch block, which referenced
+    // an undefined error variable.
+    console.error('Error loading organization name:', error)
+    toast.error('Unable to load organization name')
+  }
+})
+</script>

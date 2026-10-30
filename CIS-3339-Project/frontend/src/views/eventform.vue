@@ -154,98 +154,103 @@
   </main>
 </template>
 
-<script>
-// import vuelidate validations
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import useVuelidate from '@vuelidate/core'
 import { required } from '@vuelidate/validators'
 import { getServices, createEvent } from '../api/api'
 import { useToast } from 'vue-toastification'
 
-//Notifications
+// Initialize Vue Router and notifications inside setup.
+const router = useRouter()
 const toast = useToast()
 
-export default {
-  data() {
-    return {
-      // event variable to hold new event information
-      event: {
-        name: null,
-        description: null,
-        date: null,
-        services: [],
-        address: {
-          line1: null,
-          line2: null,
-          city: null,
-          county: null,
-          zip: null
-        },
-        attendees: [],
-      },
-      //variable to assign service IDs to event (user clicks checkboxes to add services to event)
-      activeServices: [],
-      // variable that determines which services in the List of Services checkboxes have expanded details
-      openDescriptions: [],
-    }
+// Composition API: reactive() replaces data() for the
+// event form, including its nested address and services.
+const event = reactive({
+  name: null,
+  description: null,
+  date: null,
+  services: [],
+  address: {
+    line1: null,
+    line2: null,
+    city: null,
+    county: null,
+    zip: null
   },
-  setup() {
-    // Register Vuelidate
-    const v$ = useVuelidate();
-    return { v$ };
-  },
-  validations() {
-    // validations
-    const validDate = (value) => {
-      const date = new Date(value)
-      return !isNaN(date)
-    }
+  attendees: []
+})
 
-    // prevents form submission if new event has a date before the current date
-    const notBeforeToday = (value) => {
-      const today = new Date()
-      return value >= today.toISOString().split('T')[0]
+// Composition API: ref() replaces the remaining data()
+// properties for the available services and expanded details.
+const activeServices = ref([])
+const openDescriptions = ref([])
+
+// Custom date validators migrated from validations().
+function validDate(value) {
+  const date = new Date(value)
+  return !isNaN(date.getTime())
+}
+
+// Prevent creating an event with a date before today.
+function notBeforeToday(value) {
+  const today = new Date()
+  return value >= today.toISOString().split('T')[0]
+}
+
+// Vuelidate rules replace the Options API validations()
+// function while preserving the original validation logic.
+const rules = {
+  event: {
+    name: { required },
+    date: {
+      required,
+      validDate,
+      notBeforeToday
     }
+  }
+}
 
-    return {
-      event: {
-        name: { required },
-        date: {
-          required,
-          validDate,
-          notBeforeToday
-        },
-      }
-    }
-  },
-  async mounted() {
-    // when component is mounted, data is loaded
-    try {
-        const response = await getServices();
-        this.activeServices = response.filter(item => item.status === "Active")
-      } catch (error) {
-        toast.error(error)
-      }
-  },
-  methods: {
-    // method called when user tries to create new event
-    async handleSubmitForm() {
-      // Trigger validation
-      this.v$.$validate();
+// Connect Vuelidate to the reactive event form.
+// v$ is automatically accessible inside the template.
+const v$ = useVuelidate(rules, { event })
 
-      if (this.v$.$error) {
-        toast.error('Please fix input field errors')
-        // Form is invalid, do not proceed
-        return;
-      }
+// Composition API: onMounted() replaces mounted().
+// Load available services and show only active ones.
+onMounted(async () => {
+  try {
+    const response = await getServices()
 
-      try {
-        const response = await createEvent(this.event);
-        this.$router.push('/findevents')
-        toast.success(response)
-      } catch (error) {
-        toast.error('error creating new event:', error)
-      }
-    },
-  },
+    activeServices.value = response.filter(
+      item => item.status === 'Active'
+    )
+  } catch (error) {
+    toast.error('Error loading services')
+    console.error(error)
+  }
+})
+
+// Replaces the Options API handleSubmitForm() method.
+// Validate, submit the event, then navigate on success.
+async function handleSubmitForm() {
+  const isValid = await v$.value.$validate()
+
+  if (!isValid) {
+    toast.error('Please fix input field errors')
+    return
+  }
+
+  try {
+    const response = await createEvent(event)
+
+    router.push('/findevents')
+    toast.success(response)
+  } catch (error) {
+    toast.error('Error creating new event')
+    console.error(error)
+  }
 }
 </script>

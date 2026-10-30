@@ -35,26 +35,51 @@ function getErrorMessageFromResponseBody(string) {
   return errorString;
 }
 
-// API call to log the user in
+
+/**
+ * Log in a user and save their authentication token.
+ * Handles both API validation errors and network failures.
+ */
 export async function loginUser(username, password) {
   try {
     const response = await apiClient.post("/users/login", {
       username,
       password,
     });
+
     const token = response.data.token;
+
     localStorage.setItem("authToken", token);
     setAuthHeader(token);
+
     return token;
+
   } catch (error) {
-    if (error.response.status === 400) {
-      let errorString = getErrorMessageFromResponseBody(
+    // Axios does not always provide a response object.
+    // For example, the server may be offline or unreachable.
+    const status = error.response?.status;
+
+    if (status === 400) {
+      // Preserve the original API validation error handling.
+      const errorString = getErrorMessageFromResponseBody(
         error.response.data.message
       );
-      throw new Error(errorString); // API errors get thrown here
-    } else throw error;
+
+      throw new Error(errorString);
+
+    } else if (!error.response) {
+      // Handle network errors without accessing undefined properties.
+      throw new Error(
+        "Unable to connect to the server. Please try again later."
+      );
+
+    } else {
+      // Preserve unexpected API errors for the calling code.
+      throw error;
+    }
   }
 }
+
 
 // API call to log the user out
 export function logoutUser() {
